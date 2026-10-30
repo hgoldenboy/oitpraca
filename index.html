@@ -184,7 +184,7 @@
       <div id="doctor-privacy-banner" class="bg-blue-50 border border-blue-200/80 p-3.5 rounded-2xl flex items-center justify-between text-xs text-blue-900">
         <div class="flex items-center space-x-2.5">
           <i class="fa-solid fa-user-shield text-blue-600 text-sm"></i>
-          <span>Kliknij w dany dzień, aby ustawić <strong>godziny pracy dziennej</strong> oraz <strong>chęć dyżuru</strong>. Po uzupełnieniu kliknij <strong>„Zapisz moją dyspozycję”</strong>.</span>
+          <span>Kliknij w dany dzień, aby ustawić <strong>godziny pracy dziennej</strong> (pn-pt) oraz <strong>chęć dyżuru</strong>. Po uzupełnieniu kliknij <strong>„Zapisz moją dyspozycję”</strong>.</span>
         </div>
       </div>
 
@@ -557,28 +557,33 @@
 
       <input type="hidden" id="modal-entry-date">
 
-      <div>
-        <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">Praca dzienna / Nieobecność</label>
+      <!-- Sekcja 1: Praca dzienna / Nieobecność -->
+      <div id="modal-daywork-container">
+        <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center justify-between">
+          <span>Praca dzienna (pn-pt)</span>
+          <span id="modal-weekend-warning" style="display: none;" class="text-[10px] text-amber-600 font-bold">Dzień wolny – brak pracy w dzień</span>
+        </label>
         <div class="grid grid-cols-2 gap-2 text-xs font-semibold">
-          <label class="flex items-center space-x-2 p-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 cursor-pointer">
-            <input type="radio" name="modal-day-work" value="standard_7_1435" onchange="handleModalWorkChange()" class="text-brand-600 focus:ring-brand-500">
+          <label id="label-work-std" class="flex items-center space-x-2 p-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 cursor-pointer">
+            <input type="radio" name="modal-day-work" value="standard_7_1435" id="radio-work-std" onchange="handleModalWorkChange()" class="text-brand-600 focus:ring-brand-500">
             <span>7:00 – 14:35</span>
           </label>
           <label id="label-work-long" class="flex items-center space-x-2 p-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 cursor-pointer">
             <input type="radio" name="modal-day-work" value="long_7_19" id="radio-work-long" onchange="handleModalWorkChange()" class="text-brand-600 focus:ring-brand-500">
             <span>7:00 – 19:00</span>
           </label>
-          <label class="flex items-center space-x-2 p-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 cursor-pointer">
-            <input type="radio" name="modal-day-work" value="none" onchange="handleModalWorkChange()" class="text-brand-600 focus:ring-brand-500">
+          <label id="label-work-none" class="flex items-center space-x-2 p-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 cursor-pointer">
+            <input type="radio" name="modal-day-work" value="none" id="radio-work-none" onchange="handleModalWorkChange()" class="text-brand-600 focus:ring-brand-500">
             <span>Brak pracy w dzień</span>
           </label>
-          <label class="flex items-center space-x-2 p-2.5 rounded-xl border border-rose-200 bg-rose-50/50 hover:bg-rose-50 text-rose-800 cursor-pointer">
-            <input type="radio" name="modal-day-work" value="absent" onchange="handleModalWorkChange()" class="text-rose-600 focus:ring-rose-500">
+          <label id="label-work-absent" class="flex items-center space-x-2 p-2.5 rounded-xl border border-rose-200 bg-rose-50/50 hover:bg-rose-50 text-rose-800 cursor-pointer">
+            <input type="radio" name="modal-day-work" value="absent" id="radio-work-absent" onchange="handleModalWorkChange()" class="text-rose-600 focus:ring-rose-500">
             <span>Nieobecność</span>
           </label>
         </div>
       </div>
 
+      <!-- Sekcja 2: Chęć dyżuru -->
       <div id="modal-oncall-section">
         <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">Dyspozycja do dyżuru ostrego</label>
         <div class="grid grid-cols-3 gap-2 text-xs font-semibold">
@@ -695,29 +700,31 @@
     let currentDailyDate = new Date().toISOString().split('T')[0];
     let currentDailyTab = 'blok';
 
+    // Definicja stanowisk: Sala I - Sala VIII + Nadzór, Pracownie, Oddział, Interwencje
     const STATIONS_DEF = {
       blok: [
-        { id: 'blok_sala_1', name: 'Sala I', single: true },
-        { id: 'blok_sala_2', name: 'Sala II', single: true },
-        { id: 'blok_sala_3', name: 'Sala III', single: true },
-        { id: 'blok_sala_4', name: 'Sala IV', single: true },
-        { id: 'blok_sala_5', name: 'Sala V', single: true },
-        { id: 'blok_sala_6', name: 'Sala VI', single: true },
-        { id: 'blok_sala_7', name: 'Sala VII', single: true },
-        { id: 'blok_nadzor', name: 'Nadzór Bloku', single: true }
+        { id: 'blok_sala_1', name: 'Sala I' },
+        { id: 'blok_sala_2', name: 'Sala II' },
+        { id: 'blok_sala_3', name: 'Sala III' },
+        { id: 'blok_sala_4', name: 'Sala IV' },
+        { id: 'blok_sala_5', name: 'Sala V' },
+        { id: 'blok_sala_6', name: 'Sala VI' },
+        { id: 'blok_sala_7', name: 'Sala VII' },
+        { id: 'blok_sala_8', name: 'Sala VIII' },
+        { id: 'blok_nadzor', name: 'Nadzór Bloku' }
       ],
       pracownie: [
-        { id: 'prac_hemo', name: 'Pracownia Hemodynamiki', single: true },
-        { id: 'prac_endo_uro', name: 'Endoskopia Urologiczna', single: true },
-        { id: 'prac_endo_pokarm', name: 'Endoskopia Przewodu Pokarmowego', single: true },
-        { id: 'prac_sala_v_pietro', name: 'Sala Operacyjna V piętro', single: true }
+        { id: 'prac_hemo', name: 'Pracownia Hemodynamiki' },
+        { id: 'prac_endo_uro', name: 'Endoskopia Urologiczna' },
+        { id: 'prac_endo_pokarm', name: 'Endoskopia Przewodu Pokarmowego' },
+        { id: 'prac_sala_v_pietro', name: 'Sala Operacyjna V piętro' }
       ],
       oddzial: [
-        { id: 'oit_a', name: 'OIT A', single: false },
-        { id: 'oit_b', name: 'OIT B', single: false }
+        { id: 'oit_a', name: 'OIT A' },
+        { id: 'oit_b', name: 'OIT B' }
       ],
       interwencje: [
-        { id: 'interwencje_glowna', name: 'Interwencje', single: false }
+        { id: 'interwencje_glowna', name: 'Interwencje' }
       ]
     };
 
@@ -1014,7 +1021,7 @@
 
         if (banner) {
           banner.className = "bg-blue-50 border border-blue-200/80 p-3.5 rounded-2xl flex items-center justify-between text-xs text-blue-900";
-          banner.innerHTML = `<div class="flex items-center space-x-2.5"><i class="fa-solid fa-user-shield text-blue-600 text-sm"></i><span>Kliknij w dany dzień, aby ustawić <strong>godziny pracy dziennej</strong> oraz <strong>chęć dyżuru</strong>. Po uzupełnieniu kliknij <strong>„Zapisz moją dyspozycję”</strong>.</span></div>`;
+          banner.innerHTML = `<div class="flex items-center space-x-2.5"><i class="fa-solid fa-user-shield text-blue-600 text-sm"></i><span>Kliknij w dany dzień, aby ustawić <strong>godziny pracy dziennej</strong> (pn-pt) oraz <strong>chęć dyżuru</strong>. Po uzupełnieniu kliknij <strong>„Zapisz moją dyspozycję”</strong>.</span></div>`;
         }
       }
       renderScheduleTable();
@@ -1083,7 +1090,6 @@
       const maxVal = parseInt(document.getElementById("doctor-max-shifts").value) || 7;
       const mKey = getCurrentMonthKey();
 
-      // 1. Zapis limitów w bazie
       state.monthly_limits[`${selectedDoctorId}_${mKey}`] = { min: minVal, max: maxVal };
       await supabaseClient.from('doctor_monthly_limits').upsert({
         doctor_id: selectedDoctorId,
@@ -1092,7 +1098,6 @@
         max_shifts: maxVal
       }, { onConflict: 'doctor_id,month' });
 
-      // 2. Zapis dyspozycji dyżurowych
       for (const [dateStr, status] of Object.entries(localDoctorAvail)) {
         state.availabilities[`${selectedDoctorId}_${dateStr}`] = status;
         if (status === 'none') {
@@ -1106,7 +1111,6 @@
         }
       }
 
-      // 3. Zapis godzin dziennych i nieobecności
       for (const [dateStr, workType] of Object.entries(localDoctorDayWork)) {
         state.day_records[`${selectedDoctorId}_${dateStr}`] = workType;
         if (workType === 'none') {
@@ -1122,7 +1126,6 @@
 
       showToast("Dyspozycja zapisana pomyślnie!");
 
-      // 4. Pełne czyszczenie ekranu i buforów
       localDoctorAvail = {};
       localDoctorDayWork = {};
       selectedDoctorId = "";
@@ -1184,7 +1187,6 @@
 
         const card = document.createElement("div");
 
-        // W trybie lekarza czytamy WYŁĄCZNIE bufor roboczy przed zapisem
         let onCallStatus = 'none';
         let dayWork = 'none';
 
@@ -1200,13 +1202,13 @@
 
         let bgClass = isDayOff ? "bg-indigo-50/60 border-indigo-200 hover:border-indigo-300" : "bg-white border-slate-200 hover:border-slate-300";
 
-        let workBadge = `<span class="text-[9px] text-slate-400">Dzień: brak wpisu</span>`;
+        let workBadge = `<span class="text-[9px] text-slate-400">${isDayOff ? 'Dzień wolny' : 'Dzień: brak wpisu'}</span>`;
         if (postCall) {
           workBadge = `<span class="text-[9px] font-bold text-amber-800 bg-amber-100 px-1.5 py-0.5 rounded">Zejście po dyżurze</span>`;
           bgClass = "bg-amber-50/40 border-amber-200";
-        } else if (dayWork === 'standard_7_1435') {
+        } else if (dayWork === 'standard_7_1435' && !isDayOff) {
           workBadge = `<span class="text-[9px] font-bold text-slate-700 bg-slate-200 px-1.5 py-0.5 rounded">7:00 – 14:35</span>`;
-        } else if (dayWork === 'long_7_19') {
+        } else if (dayWork === 'long_7_19' && !isDayOff) {
           workBadge = `<span class="text-[9px] font-bold text-indigo-700 bg-indigo-100 px-1.5 py-0.5 rounded">7:00 – 19:00</span>`;
         } else if (dayWork === 'absent') {
           workBadge = `<span class="text-[9px] font-bold text-rose-800 bg-rose-100 px-1.5 py-0.5 rounded">Nieobecność</span>`;
@@ -1257,6 +1259,12 @@
         return;
       }
 
+      const [y, m, d] = dateStr.split('-').map(Number);
+      const dayOfWeek = new Date(y, m - 1, d).getDay();
+      const isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
+      const isHoliday = isPolishPublicHoliday(y, m - 1, d);
+      const isDayOff = isWeekend || isHoliday;
+
       const doc = state.doctors.find(d => d.id === selectedDoctorId);
       const isSpec = doc && doc.role === 'specialist';
 
@@ -1264,16 +1272,39 @@
       document.getElementById("modal-day-title").innerText = `Dyspozycja: ${dayNum} ${document.getElementById("calendar-month-label").innerText}`;
       document.getElementById("modal-day-desc").innerText = `${doc ? doc.name : ''} (${isSpec ? 'Specjalista' : 'Rezydent'}) ${suffix ? '• ' + suffix : ''}`;
 
+      // Obsługa wyłączenia pracy dziennej w weekendy i święta
+      const radioStd = document.getElementById("radio-work-std");
+      const labelStd = document.getElementById("label-work-std");
       const radioLong = document.getElementById("radio-work-long");
       const labelLong = document.getElementById("label-work-long");
-      if (!isSpec) {
+      const radioNone = document.getElementById("radio-work-none");
+      const labelNone = document.getElementById("label-work-none");
+      const weekendWarning = document.getElementById("modal-weekend-warning");
+
+      if (isDayOff) {
+        weekendWarning.style.display = "inline";
+        radioStd.disabled = true;
+        labelStd.classList.add("opacity-30", "pointer-events-none");
         radioLong.disabled = true;
-        labelLong.classList.add("opacity-40", "cursor-not-allowed");
-        labelLong.title = "Opcja 7:00-19:00 dostępna wyłącznie dla specjalistów";
+        labelLong.classList.add("opacity-30", "pointer-events-none");
+        radioNone.disabled = true;
+        labelNone.classList.add("opacity-30", "pointer-events-none");
       } else {
-        radioLong.disabled = false;
-        labelLong.classList.remove("opacity-40", "cursor-not-allowed");
-        labelLong.title = "";
+        weekendWarning.style.display = "none";
+        radioStd.disabled = false;
+        labelStd.classList.remove("opacity-30", "pointer-events-none");
+        radioNone.disabled = false;
+        labelNone.classList.remove("opacity-30", "pointer-events-none");
+
+        if (!isSpec) {
+          radioLong.disabled = true;
+          labelLong.classList.add("opacity-40", "cursor-not-allowed");
+          labelLong.title = "Opcja 7:00-19:00 dostępna wyłącznie dla specjalistów";
+        } else {
+          radioLong.disabled = false;
+          labelLong.classList.remove("opacity-40", "cursor-not-allowed");
+          labelLong.title = "";
+        }
       }
 
       const postCall = isCoordinator ? isDoctorPostCall(selectedDoctorId, dateStr) : false;
@@ -1288,6 +1319,11 @@
       } else {
         currentWork = localDoctorDayWork[dateStr] || 'none';
         currentOnCall = localDoctorAvail[dateStr] || 'none';
+      }
+
+      // W dni wolne praca dzienna nie może być standardowa ani wydłużona
+      if (isDayOff && currentWork !== 'absent') {
+        currentWork = 'none';
       }
 
       const workRadios = document.getElementsByName("modal-day-work");
@@ -1334,7 +1370,14 @@
 
     function saveDayModalEntry() {
       const dateStr = document.getElementById("modal-entry-date").value;
-      const selectedWork = document.querySelector('input[name="modal-day-work"]:checked')?.value || 'none';
+      const [y, m, d] = dateStr.split('-').map(Number);
+      const isDayOff = (new Date(y, m - 1, d).getDay() === 0 || new Date(y, m - 1, d).getDay() === 6 || isPolishPublicHoliday(y, m - 1, d));
+
+      let selectedWork = document.querySelector('input[name="modal-day-work"]:checked')?.value || 'none';
+      if (isDayOff && selectedWork !== 'absent') {
+        selectedWork = 'none';
+      }
+
       const selectedOnCall = document.querySelector('input[name="modal-oncall"]:checked')?.value || 'none';
 
       localDoctorDayWork[dateStr] = selectedWork;
@@ -1955,26 +1998,26 @@
           stationCard.className = `border rounded-2xl p-4 flex flex-col justify-between transition ${isClosed ? 'bg-slate-100/70 border-slate-200 opacity-60' : 'bg-white border-slate-200/90 shadow-2xs'}`;
 
           let toggleBtnHtml = "";
-          if (station.single && isCoordinator) {
+          if (isCoordinator) {
             toggleBtnHtml = `
               <button onclick="toggleStationClosed('${station.id}')" title="${isClosed ? 'Otwórz stanowisko' : 'Zamknij stanowisko'}" class="text-[10px] font-bold px-2 py-0.5 rounded-lg border transition ${isClosed ? 'bg-amber-100 text-amber-800 border-amber-300 hover:bg-amber-200' : 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200'}">
-                ${isClosed ? 'Zamknięta' : 'Aktywna'}
+                ${isClosed ? 'Zamknięte' : 'Aktywne'}
               </button>
             `;
-          } else if (station.single && isClosed) {
-            toggleBtnHtml = `<span class="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-amber-100 text-amber-800 border border-amber-200">Zamknięta</span>`;
+          } else if (isClosed) {
+            toggleBtnHtml = `<span class="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-amber-100 text-amber-800 border border-amber-200">Zamknięte</span>`;
           }
 
           let assignedContentHtml = "";
           if (isClosed) {
             assignedContentHtml = `<div class="h-20 flex items-center justify-center text-xs text-slate-400 font-semibold italic">Stanowisko wyłączone / zamknięte</div>`;
           } else {
-            const dropzoneHandlers = isCoordinator ? `ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDropToStation(event, '${station.id}', ${station.single})"` : '';
+            const dropzoneHandlers = isCoordinator ? `ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDropToStation(event, '${station.id}')"` : '';
             assignedContentHtml = `
               <div id="dropzone-${station.id}" 
                 ${dropzoneHandlers} 
                 class="min-h-[72px] p-2 bg-slate-50 border ${isCoordinator ? 'border-dashed border-slate-300' : 'border-slate-200'} rounded-xl flex flex-wrap gap-1.5 items-center transition">
-                ${assignedDoctors.length === 0 ? `<span class="text-[11px] text-slate-400 italic m-auto">${isCoordinator ? 'Przeciągnij lekarza tutaj' : 'Brak obsady'}</span>` : ''}
+                ${assignedDoctors.length === 0 ? `<span class="text-[11px] text-slate-400 italic m-auto">${isCoordinator ? 'Przeciągnij lekarzy tutaj' : 'Brak obsady'}</span>` : ''}
               </div>
             `;
           }
@@ -1983,7 +2026,7 @@
             <div class="flex justify-between items-start mb-2.5">
               <div>
                 <h4 class="font-extrabold text-xs text-slate-900 tracking-tight">${station.name}</h4>
-                <p class="text-[10px] text-slate-400">${station.single ? '1 lekarz anestezjolog' : 'Pula stanowiska (wielu)'}</p>
+                <p class="text-[10px] text-slate-400">Stanowisko / Sala (wielu)</p>
               </div>
               ${toggleBtnHtml}
             </div>
@@ -2060,7 +2103,7 @@
       e.currentTarget.classList.remove("drop-zone-active");
     }
 
-    function handleDropToStation(e, targetStationId, isSingle) {
+    function handleDropToStation(e, targetStationId) {
       if (!isCoordinator) return;
       e.preventDefault();
       e.currentTarget.classList.remove("drop-zone-active");
@@ -2075,12 +2118,8 @@
         assignments[draggedFromStationId] = (assignments[draggedFromStationId] || []).filter(id => id !== draggedDoctorId);
       }
 
-      if (isSingle && assignments[targetStationId].length > 0) {
-        assignments[targetStationId] = [draggedDoctorId];
-      } else {
-        if (!assignments[targetStationId].includes(draggedDoctorId)) {
-          assignments[targetStationId].push(draggedDoctorId);
-        }
+      if (!assignments[targetStationId].includes(draggedDoctorId)) {
+        assignments[targetStationId].push(draggedDoctorId);
       }
 
       draggedDoctorId = null;
