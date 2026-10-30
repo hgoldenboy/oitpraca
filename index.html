@@ -47,24 +47,24 @@
     .draggable-card:active {
       cursor: grabbing;
     }
-    #pdf-render-area {
+    #pdf-render-area, #pdf-daily-render-area {
       width: 190mm;
       box-sizing: border-box;
       background: #ffffff;
       color: #0f172a;
       font-family: '"Plus Jakarta Sans"', sans-serif;
     }
-    #pdf-render-area table {
+    #pdf-render-area table, #pdf-daily-render-area table {
       width: 100%;
       border-collapse: collapse;
     }
-    #pdf-render-area th, #pdf-render-area td {
+    #pdf-render-area th, #pdf-render-area td, #pdf-daily-render-area th, #pdf-daily-render-area td {
       border: 1px solid #334155;
       padding: 2.2px 4px;
       font-size: 8pt;
       line-height: 1.15;
     }
-    #pdf-render-area th {
+    #pdf-render-area th, #pdf-daily-render-area th {
       background-color: #f1f5f9;
       font-weight: 700;
     }
@@ -102,7 +102,7 @@
             <i class="fa-solid fa-calendar-days"></i>
             <span>Grafik Dyżurów</span>
           </button>
-          <button id="nav-daily" type="button" onclick="handleDailyNavClick()" class="px-3.5 py-1.5 rounded-xl text-slate-600 hover:text-slate-900 transition flex items-center space-x-1.5">
+          <button id="nav-daily" type="button" onclick="switchView('daily')" class="px-3.5 py-1.5 rounded-xl text-slate-600 hover:text-slate-900 transition flex items-center space-x-1.5">
             <i class="fa-solid fa-hospital-user text-amber-600"></i>
             <span>Obsada Dzienna</span>
           </button>
@@ -184,7 +184,7 @@
       <div id="doctor-privacy-banner" class="bg-blue-50 border border-blue-200/80 p-3.5 rounded-2xl flex items-center justify-between text-xs text-blue-900">
         <div class="flex items-center space-x-2.5">
           <i class="fa-solid fa-user-shield text-blue-600 text-sm"></i>
-          <span>Kliknij w dany dzień, aby ustawić <strong>godziny dzienne</strong> oraz <strong>chęć dyżuru</strong>. Po uzupełnieniu kliknij <strong>„Zapisz moją dyspozycję”</strong>.</span>
+          <span>Kliknij w dany dzień, aby ustawić <strong>godziny pracy dziennej</strong> oraz <strong>chęć dyżuru</strong>. Po uzupełnieniu kliknij <strong>„Zapisz moją dyspozycję”</strong>.</span>
         </div>
       </div>
 
@@ -286,55 +286,92 @@
       </div>
     </section>
 
-    <!-- ==================== WIDOK 3: OBSADA DZIENNA (KOORDYNATOR) ==================== -->
+    <!-- ==================== WIDOK 3: OBSADA DZIENNA ==================== -->
     <section id="view-daily" class="space-y-6" style="display: none;">
       
-      <!-- Pasek wyboru daty dla obsady dziennej -->
+      <!-- Pasek nawigacyjny i narzędzia -->
       <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex flex-wrap justify-between items-center gap-4">
         <div class="flex items-center space-x-3">
           <div class="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold text-lg border border-amber-100">
             <i class="fa-solid fa-hospital-user"></i>
           </div>
           <div>
-            <h2 class="text-base font-extrabold text-slate-900 tracking-tight">Obsada Dzienna Stanowisk</h2>
-            <p class="text-xs text-slate-500 font-medium">Przydzielaj obecnych lekarzy metodą przeciągnij i upuść (Drag & Drop)</p>
+            <div class="flex items-center space-x-2">
+              <h2 class="text-base font-extrabold text-slate-900 tracking-tight">Obsada Dzienna Stanowisk</h2>
+              <span id="daily-status-badge" class="px-2 py-0.5 rounded-full text-[10px] font-bold"></span>
+            </div>
+            <p id="daily-subtitle" class="text-xs text-slate-500 font-medium">Rozkład personelu lekarskiego na stanowiskach</p>
           </div>
         </div>
 
-        <div class="flex items-center space-x-2">
+        <div class="flex items-center flex-wrap gap-2">
           <div class="flex items-center bg-slate-50 p-1.5 rounded-2xl border border-slate-200">
             <button onclick="changeDailyDay(-1)" class="w-8 h-8 flex items-center justify-center rounded-xl hover:bg-white text-slate-600 hover:text-slate-900 transition"><i class="fa-solid fa-chevron-left text-xs"></i></button>
             <input type="date" id="daily-date-picker" onchange="handleDailyDateInput(this.value)" class="bg-transparent font-extrabold text-xs px-3 text-slate-800 outline-none cursor-pointer">
             <button onclick="changeDailyDay(1)" class="w-8 h-8 flex items-center justify-center rounded-xl hover:bg-white text-slate-600 hover:text-slate-900 transition"><i class="fa-solid fa-chevron-right text-xs"></i></button>
           </div>
-          <button onclick="saveDailyStationAssignments()" class="bg-brand-600 hover:bg-brand-700 text-white font-bold px-4 py-2 rounded-xl text-xs shadow-xs transition flex items-center space-x-1.5">
-            <i class="fa-solid fa-floppy-disk"></i>
-            <span>Zapisz obsadę</span>
+
+          <!-- Przycisk PDF (Dla wszystkich jeśli opublikowane, dla koordynatora zawsze) -->
+          <button id="btn-daily-pdf" onclick="downloadDailyPDF()" class="bg-slate-900 hover:bg-slate-800 text-white font-bold px-3.5 py-2 rounded-xl text-xs shadow-xs transition flex items-center space-x-1.5">
+            <i class="fa-solid fa-file-arrow-down text-rose-400"></i>
+            <span>Pobierz PDF</span>
           </button>
+
+          <!-- Narzędzia koordynatora -->
+          <div id="daily-coord-tools" style="display: none;" class="flex items-center space-x-2">
+            <button id="btn-toggle-daily-publish" onclick="toggleDailyPublish()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-3.5 py-2 rounded-xl text-xs shadow-xs transition flex items-center space-x-1.5">
+              <i class="fa-solid fa-bullhorn"></i>
+              <span id="btn-toggle-daily-publish-label">Opublikuj obsadę</span>
+            </button>
+            <button onclick="saveDailyStationAssignments(true)" class="bg-brand-600 hover:bg-brand-700 text-white font-bold px-3.5 py-2 rounded-xl text-xs shadow-xs transition flex items-center space-x-1.5">
+              <i class="fa-solid fa-floppy-disk"></i>
+              <span>Zapisz obsadę</span>
+            </button>
+          </div>
         </div>
       </div>
 
-      <!-- Pula lekarzy w pracy w danym dniu -->
-      <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs">
+      <!-- Baner blokady dla personelu gdy dzień jest nieopublikowany -->
+      <div id="daily-locked-banner" style="display: none;" class="bg-white p-12 rounded-2xl border border-slate-200 text-center shadow-xs">
+        <div class="w-14 h-14 bg-amber-50 text-amber-600 rounded-full flex items-center justify-center mx-auto mb-3 shadow-2xs">
+          <i class="fa-solid fa-clock-rotate-left text-2xl"></i>
+        </div>
+        <h3 class="text-base font-extrabold text-slate-900 mb-1">Obsada dzienna w trakcie przygotowania</h3>
+        <p class="text-xs text-slate-500 max-w-md mx-auto">
+          Rozpiska pracy na wybrany dzień jest przygotowywana przez Koordynatora. Zostanie udostępniona natychmiast po oficjalnej publikacji.
+        </p>
+      </div>
+
+      <!-- Karta dyżurów ostrych w danym dniu -->
+      <div id="daily-oncall-header-card" class="bg-gradient-to-r from-slate-900 to-slate-800 text-white p-4 rounded-2xl shadow-xs border border-slate-700 flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <span class="text-[10px] uppercase font-bold tracking-widest text-brand-400">Dyżur OIT (Ostry)</span>
+          <h4 class="text-xs font-black">Obsada dyżurowa 24h / nocna w tym dniu:</h4>
+        </div>
+        <div id="daily-oncall-list" class="flex flex-wrap gap-2 text-xs font-semibold">
+          <!-- Wypełniane dynamicznie -->
+        </div>
+      </div>
+
+      <!-- Pula lekarzy do przeciągania (tylko w trybie Koordynatora) -->
+      <div id="daily-coord-pool-card" class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs">
         <div class="flex justify-between items-center mb-3">
           <h3 class="text-xs font-extrabold uppercase tracking-wider text-slate-700 flex items-center space-x-2">
             <i class="fa-solid fa-users-viewfinder text-brand-600"></i>
-            <span>Dostępni lekarze w tym dniu (przeciągnij na wybrane stanowisko)</span>
+            <span>Dostępni lekarze w tym dniu (przeciągnij na stanowisko)</span>
           </h3>
           <span id="daily-available-count" class="text-xs font-bold text-slate-500 bg-slate-100 px-2.5 py-0.5 rounded-full">0 osób</span>
         </div>
         
         <div id="daily-pool-container" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDropToPool(event)" class="min-h-[64px] p-2.5 bg-slate-50 border-2 border-dashed border-slate-200 rounded-xl flex flex-wrap gap-2 items-center transition">
-          <!-- Kafelki lekarzy generowane dynamicznie -->
         </div>
 
         <div id="daily-off-summary" class="mt-3 pt-3 border-t border-slate-100 text-[11px] text-slate-500 flex flex-wrap gap-4">
-          <!-- Zestawienie: Zejścia po dyżurze i Nieobecni -->
         </div>
       </div>
 
       <!-- Zakładki obszarów: Blok, Pracownie, Oddział, Interwencje -->
-      <div class="space-y-4">
+      <div id="daily-board-stations-wrapper" class="space-y-4">
         <div class="flex p-1 bg-slate-100 rounded-2xl border border-slate-200 w-fit text-xs font-bold">
           <button id="tab-btn-blok" onclick="switchDailyTab('blok')" class="px-4 py-2 rounded-xl bg-white text-slate-900 shadow-xs transition">Blok Operacyjny</button>
           <button id="tab-btn-pracownie" onclick="switchDailyTab('pracownie')" class="px-4 py-2 rounded-xl text-slate-600 hover:text-slate-900 transition">Pracownie</button>
@@ -342,25 +379,10 @@
           <button id="tab-btn-interwencje" onclick="switchDailyTab('interwencje')" class="px-4 py-2 rounded-xl text-slate-600 hover:text-slate-900 transition">Interwencje</button>
         </div>
 
-        <!-- TAB 1: BLOK OPERACYJNY -->
-        <div id="tab-content-blok" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <!-- Sale I-VII + Nadzór -->
-        </div>
-
-        <!-- TAB 2: PRACOWNIE -->
-        <div id="tab-content-pracownie" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4" style="display: none;">
-          <!-- Hemodynamika, Endo Urologiczna, Endo Pokarmowy, V Piętro -->
-        </div>
-
-        <!-- TAB 3: ODDZIAŁ -->
-        <div id="tab-content-oddzial" class="grid grid-cols-1 md:grid-cols-2 gap-4" style="display: none;">
-          <!-- OIT A, OIT B -->
-        </div>
-
-        <!-- TAB 4: INTERWENCJE -->
-        <div id="tab-content-interwencje" class="grid grid-cols-1 gap-4" style="display: none;">
-          <!-- Interwencje -->
-        </div>
+        <div id="tab-content-blok" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4"></div>
+        <div id="tab-content-pracownie" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4" style="display: none;"></div>
+        <div id="tab-content-oddzial" class="grid grid-cols-1 md:grid-cols-2 gap-4" style="display: none;"></div>
+        <div id="tab-content-interwencje" class="grid grid-cols-1 gap-4" style="display: none;"></div>
       </div>
 
     </section>
@@ -435,7 +457,7 @@
 
   </main>
 
-  <!-- ==================== OBSZAR PDF ==================== -->
+  <!-- ==================== OBSZAR PDF: GRAFIK MIESIĘCZNY ==================== -->
   <div style="position: absolute; left: -9999px; top: -9999px;">
     <div id="pdf-render-area" class="p-4">
       <div class="flex justify-between items-end border-b-2 border-slate-900 pb-1.5 mb-2">
@@ -476,6 +498,59 @@
     </div>
   </div>
 
+  <!-- ==================== OBSZAR PDF: OBSADA DZIENNA ==================== -->
+  <div style="position: absolute; left: -9999px; top: -9999px;">
+    <div id="pdf-daily-render-area" class="p-6">
+      <div class="flex justify-between items-end border-b-2 border-slate-900 pb-2 mb-3">
+        <div>
+          <h2 class="text-[11pt] font-extrabold uppercase tracking-tight text-slate-900 leading-tight">Oddział Anestezjologii i Intensywnej Terapii</h2>
+          <p class="text-[8.5pt] font-semibold text-slate-700">Wielospecjalistyczny Szpital Miejski im. Józefa Strusia w Poznaniu</p>
+        </div>
+        <div class="text-right">
+          <h3 id="pdf-daily-date-title" class="text-[11pt] font-black uppercase text-slate-900 leading-tight">Plan Obsady Dziennej</h3>
+          <p id="pdf-daily-dayname" class="text-[8.5pt] text-slate-600 font-bold"></p>
+        </div>
+      </div>
+
+      <!-- Dyżury ostre w PDF -->
+      <div class="bg-slate-100 p-2 border border-slate-300 rounded mb-3 text-[8pt]">
+        <span class="font-bold uppercase text-slate-900">Dyżur OIT (Ostry):</span>
+        <span id="pdf-daily-oncall-text" class="ml-2 font-medium text-slate-800"></span>
+      </div>
+
+      <!-- Tabela stanowisk w PDF -->
+      <table>
+        <thead>
+          <tr>
+            <th style="width: 25%;">Obszar</th>
+            <th style="width: 35%;">Stanowisko / Sala</th>
+            <th style="width: 40%;">Obsada lekarska</th>
+          </tr>
+        </thead>
+        <tbody id="pdf-daily-table-body"></tbody>
+      </table>
+
+      <!-- Zejścia i nieobecności w PDF -->
+      <div class="mt-3 pt-2 border-t border-slate-200 text-[7.5pt] text-slate-600 flex justify-between">
+        <div><strong>Zejście po dyżurze:</strong> <span id="pdf-daily-postcall"></span></div>
+        <div><strong>Nieobecności / Urlopy:</strong> <span id="pdf-daily-absent"></span></div>
+      </div>
+
+      <div class="flex justify-between items-end pt-6 mt-4">
+        <div class="text-center" style="width: 55mm;">
+          <div style="border-bottom: 1px solid #475569; height: 18px;"></div>
+          <p class="text-[7.5pt] font-bold text-slate-900 mt-1">Koordynator Dnia</p>
+          <p class="text-[6.5pt] text-slate-500">(podpis)</p>
+        </div>
+        <div class="text-center" style="width: 55mm;">
+          <div style="border-bottom: 1px solid #475569; height: 18px;"></div>
+          <p class="text-[7.5pt] font-bold text-slate-900 mt-1">Kierownik Oddziału / Ordynator</p>
+          <p class="text-[6.5pt] text-slate-500">(podpis i pieczęć)</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- ==================== MODAL: DEKLARACJA LEKARZA (WARIANT A) ==================== -->
   <div id="modal-day-entry" style="display: none;" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
     <div class="bg-white rounded-3xl shadow-2xl max-w-sm w-full p-6 border border-slate-100 space-y-4">
@@ -489,7 +564,6 @@
 
       <input type="hidden" id="modal-entry-date">
 
-      <!-- Sekcja 1: Praca dzienna / Nieobecność -->
       <div>
         <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">Praca dzienna / Nieobecność</label>
         <div class="grid grid-cols-2 gap-2 text-xs font-semibold">
@@ -512,7 +586,6 @@
         </div>
       </div>
 
-      <!-- Sekcja 2: Chęć dyżuru -->
       <div id="modal-oncall-section">
         <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">Dyspozycja do dyżuru ostrego</label>
         <div class="grid grid-cols-3 gap-2 text-xs font-semibold">
@@ -609,141 +682,18 @@
       admin_pin: "1234",
       doctors: [],
       monthly_limits: {},
-      availabilities: {},          // key: `${doc_id}_${date}` -> 'preferred' | 'available' | 'unavailable' | 'none'
-      day_records: {},             // key: `${doc_id}_${date}` -> 'standard_7_1435' | 'long_7_19' | 'absent' | 'none'
-      shifts: {},                  // key: date -> { doctor1_id, doctor2_id, doctor3_id, doctor4_id }
-      published_months: {},
-      daily_assignments: {},       // key: date -> { station_id: [doctor_id, ...] }
-      daily_closed_stations: {}    // key: date -> [station_id, ...]
-    };
-
-    // Robocze deklaracje lekarza przed kliknięciem "Zapisz"
-    let localDoctorAvail = {};
-    let localDoctorDayWork = {};
-
-    let currentDate = new Date();
-    currentDate.setDate(1);
-    let selectedDoctorId = "";
-    let isCoordinator = false;
-
-    // Wybrany dzień w module Obsady Dziennej (domyślnie dzisiejsza data w formacie YYYY-MM-DD)
-    let currentDailyDate = new Date().toISOString().split('T')[0];
-    let currentDailyTab = 'blok';
-
-    // Definicja stanowisk w modułach
-    const STATIONS_DEF = {
-      blok: [
-        { id: 'blok_sala_1', name: 'Sala I', single: true },
-        { id: 'blok_sala_2', name: 'Sala II', single: true },
-        { id: 'blok_sala_3', name: 'Sala III', single: true },
-        { id: 'blok_sala_4', name: 'Sala IV', single: true },
-        { id: 'blok_sala_5', name: 'Sala V', single: true },
-        { id: 'blok_sala_6', name: 'Sala VI', single: true },
-        { id: 'blok_sala_7', name: 'Sala VII', single: true },
-        { id: 'blok_nadzor', name: 'Nadzór Bloku', single: true }
-      ],
-      pracownie: [
-        { id: 'prac_hemo', name: 'Pracownia Hemodynamiki', single: true },
-        { id: 'prac_endo_uro', name: 'Endoskopia Urologiczna', single: true },
-        { id: 'prac_endo_pokarm', name: 'Endoskopia Przewodu Pokarmowego', single: true },
-        { id: 'prac_sala_v_pietro', name: 'Sala Operacyjna V piętro', single: true }
-      ],
-      oddzial: [
-        { id: 'oit_a', name: 'OIT A', single: false },
-        { id: 'oit_b', name: 'OIT B', single: false }
-      ],
-      interwencje: [
-        { id: 'interwencje_glowna', name: 'Interwencje', single: false }
-      ]
-    };
-
-    function getEasterSunday(year) {
-      const a = year % 19;
-      const b = Math.floor(year / 100);
-      const c = year % 100;
-      const d = Math.floor(b / 4);
-      const e = b % 4;
-      const f = Math.floor((b + 8) / 25);
-      const g = Math.floor((b - f + 1) / 3);
-      const h = (19 * a + b - d - g + 15) % 30;
-      const i = Math.floor(c / 4);
-      const k = c % 4;
-      const l = (32 + 2 * e + 2 * i - h - k) % 7;
-      const m = Math.floor((a + 11 * h + 22 * l) / 451);
-      const month = Math.floor((h + l - 7 * m + 114) / 31) - 1;
-      const day = ((h + l - 7 * m + 114) % 31) + 1;
-      return new Date(year, month, day);
+      availabilities: {},          // key: `${doc_id}_${date}` -> 'preferred' \vert{} 'available' \vert{} 'unavailable' \vert{} 'none' day_records: {},             // key: `${doc_id}_${date}` -> 'standard_7_1435' \vert{} 'long_7_19' \vert{} 'absent' \vert{} 'none' shifts: {},                  // key: date -> { doctor1_id, doctor2_id, doctor3_id, doctor4_id } published_months: {},        // key: `YYYY-MM` -> true/false published_days: {},          // key: `YYYY-MM-DD` -> true/false (publikacja obsady dziennej) daily_assignments: {},       // key: date -> { station_id: [doctor_id, ...] } daily_closed_stations: {}    // key: date -> [station_id, ...] };  let localDoctorAvail = {}; let localDoctorDayWork = {};  let currentDate = new Date(); currentDate.setDate(1); let selectedDoctorId = ""; let isCoordinator = false;  let currentDailyDate = new Date().toISOString().split('T')[0]; let currentDailyTab = 'blok';  const STATIONS_DEF = { blok: [ { id: 'blok_sala_1', name: 'Sala I', single: true }, { id: 'blok_sala_2', name: 'Sala II', single: true }, { id: 'blok_sala_3', name: 'Sala III', single: true }, { id: 'blok_sala_4', name: 'Sala IV', single: true }, { id: 'blok_sala_5', name: 'Sala V', single: true }, { id: 'blok_sala_6', name: 'Sala VI', single: true }, { id: 'blok_sala_7', name: 'Sala VII', single: true }, { id: 'blok_nadzor', name: 'Nadzór Bloku', single: true } ], pracownie: [ { id: 'prac_hemo', name: 'Pracownia Hemodynamiki', single: true }, { id: 'prac_endo_uro', name: 'Endoskopia Urologiczna', single: true }, { id: 'prac_endo_pokarm', name: 'Endoskopia Przewodu Pokarmowego', single: true }, { id: 'prac_sala_v_pietro', name: 'Sala Operacyjna V piętro', single: true } ], oddzial: [ { id: 'oit_a', name: 'OIT A', single: false }, { id: 'oit_b', name: 'OIT B', single: false } ], interwencje: [ { id: 'interwencje_glowna', name: 'Interwencje', single: false } ] };  function getEasterSunday(year) { const a = year \% 19; const b = Math.floor(year / 100); const c = year \% 100; const d = Math.floor(b / 4); const e = b \% 4; const f = Math.floor((b + 8) / 25); const g = Math.floor((b - f + 1) / 3); const h = (19 * a + b - d - g + 15) \% 30; const i = Math.floor(c / 4); const k = c \% 4; const l = (32 + 2 * e + 2 * i - h - k) \% 7; const m = Math.floor((a + 11 * h + 22 * l) / 451); const month = Math.floor((h + l - 7 * m + 114) / 31) - 1; const day = ((h + l - 7 * m + 114) \% 31) + 1; return new Date(year, month, day); }  function isPolishPublicHoliday(year, month, day) { const fixedHolidays = [ { m: 0, d: 1 }, { m: 0, d: 6 }, { m: 4, d: 1 }, { m: 4, d: 3 }, { m: 7, d: 15 }, { m: 10, d: 1 }, { m: 10, d: 11 }, { m: 11, d: 25 }, { m: 11, d: 26 } ];  const isFixed = fixedHolidays.some(h => h.m === month && h.d === day); if (isFixed) return true;  const easter = getEasterSunday(year); const easterMonday = new Date(easter); easterMonday.setDate(easter.getDate() + 1);  const corpusChristi = new Date(easter); corpusChristi.setDate(easter.getDate() + 60);  const isSameDate = (d) => d.getFullYear() === year && d.getMonth() === month && d.getDate() === day; return isSameDate(easter) \vert{}\vert{} isSameDate(easterMonday) \vert{}\vert{} isSameDate(corpusChristi); }  document.addEventListener("DOMContentLoaded", async () => { document.getElementById("daily-date-picker").value = currentDailyDate; updateMonthLabel(); await fetchAllDataFromSupabase(); updateCoordinatorUI(); });  function showToast(message, type = "success") { const toast = document.getElementById("toast"); const msg = document.getElementById("toast-msg"); const icon = document.getElementById("toast-icon");  msg.textContent = message; icon.className = type === "error" ? "fa-solid fa-circle-exclamation text-rose-400 text-base" : "fa-solid fa-circle-check text-emerald-400 text-base";  toast.classList.remove("translate-y-16", "opacity-0"); setTimeout(() => { toast.classList.add("translate-y-16", "opacity-0"); }, 2500); }  function getCurrentMonthKey() { const y = currentDate.getFullYear(); const m = String(currentDate.getMonth() + 1).padStart(2, '0'); return `${y}-${m}`; }  function isCurrentMonthPublished() { const mKey = getCurrentMonthKey(); return state.published_months[mKey] === true; }  function isCurrentDailyPublished() { return state.published_days[currentDailyDate] === true; }  function getPreviousDateString(dateStr) { const [y, m, d] = dateStr.split('-').map(Number); const prev = new Date(y, m - 1, d - 1); return `${prev.getFullYear()}-${String(prev.getMonth() + 1).padStart(2, '0')}-${String(prev.getDate()).padStart(2, '0')}`;
     }
 
-    function isPolishPublicHoliday(year, month, day) {
-      const fixedHolidays = [
-        { m: 0, d: 1 },   // Nowy Rok
-        { m: 0, d: 6 },   // Trzech Króli
-        { m: 4, d: 1 },   // Święto Pracy
-        { m: 4, d: 3 },   // Święto Konstytucji
-        { m: 7, d: 15 },  // Wniebowzięcie NMP
-        { m: 10, d: 1 },  // Wszystkich Świętych
-        { m: 10, d: 11 }, // Niepodległości
-        { m: 11, d: 25 }, // Boże Narodzenie
-        { m: 11, d: 26 }
-      ];
-
-      const isFixed = fixedHolidays.some(h => h.m === month && h.d === day);
-      if (isFixed) return true;
-
-      const easter = getEasterSunday(year);
-      const easterMonday = new Date(easter);
-      easterMonday.setDate(easter.getDate() + 1);
-
-      const corpusChristi = new Date(easter);
-      corpusChristi.setDate(easter.getDate() + 60);
-
-      const isSameDate = (d) => d.getFullYear() === year && d.getMonth() === month && d.getDate() === day;
-      return isSameDate(easter) || isSameDate(easterMonday) || isSameDate(corpusChristi);
-    }
-
-    document.addEventListener("DOMContentLoaded", async () => {
-      document.getElementById("daily-date-picker").value = currentDailyDate;
-      updateMonthLabel();
-      await fetchAllDataFromSupabase();
-      updateCoordinatorUI();
-    });
-
-    function showToast(message, type = "success") {
-      const toast = document.getElementById("toast");
-      const msg = document.getElementById("toast-msg");
-      const icon = document.getElementById("toast-icon");
-      
-      msg.textContent = message;
-      icon.className = type === "error" ? "fa-solid fa-circle-exclamation text-rose-400 text-base" : "fa-solid fa-circle-check text-emerald-400 text-base";
-      
-      toast.classList.remove("translate-y-16", "opacity-0");
-      setTimeout(() => {
-        toast.classList.add("translate-y-16", "opacity-0");
-      }, 2500);
-    }
-
-    function getCurrentMonthKey() {
-      const y = currentDate.getFullYear();
-      const m = String(currentDate.getMonth() + 1).padStart(2, '0');
-      return `${y}-${m}`;
-    }
-
-    function isCurrentMonthPublished() {
-      const mKey = getCurrentMonthKey();
-      return state.published_months[mKey] === true;
-    }
-
-    // Wyznaczanie poprzedniego dnia (format YYYY-MM-DD)
-    function getPreviousDateString(dateStr) {
-      const [y, m, d] = dateStr.split('-').map(Number);
-      const prev = new Date(y, m - 1, d - 1);
-      return `${prev.getFullYear()}-${String(prev.getMonth() + 1).padStart(2, '0')}-${String(prev.getDate()).padStart(2, '0')}`;
-    }
-
-    // Sprawdzenie, czy lekarz dyżurował wczoraj (wymuszone zejście po dyżurze)
+    // Zejście po dyżurze obowiązuje TYLKO wtedy, gdy miesiąc wczorajszego dyżuru został oficjalnie OPUBLIKOWANY!
     function isDoctorPostCall(doctorId, dateStr) {
       const prevDate = getPreviousDateString(dateStr);
+      const prevMonthKey = prevDate.substring(0, 7);
+
+      if (!state.published_months[prevMonthKey]) {
+        return false;
+      }
+
       const prevShift = state.shifts[prevDate];
       if (!prevShift) return false;
       return [prevShift.doctor1_id, prevShift.doctor2_id, prevShift.doctor3_id, prevShift.doctor4_id].includes(doctorId);
@@ -751,7 +701,6 @@
 
     async function fetchAllDataFromSupabase() {
       try {
-        // 1. Ustawienia
         const { data: settingsData } = await supabaseClient.from('app_settings').select('*');
         if (settingsData) {
           settingsData.forEach(row => {
@@ -760,16 +709,18 @@
               const mKey = row.key.replace('schedule_published_', '');
               state.published_months[mKey] = (row.value === 'true');
             }
+            if (row.key.startsWith('daily_published_')) {
+              const dKey = row.key.replace('daily_published_', '');
+              state.published_days[dKey] = (row.value === 'true');
+            }
           });
         }
 
-        // 2. Lekarze
         const { data: docsData } = await supabaseClient.from('doctors').select('*').order('name');
         if (docsData && docsData.length > 0) {
           state.doctors = docsData;
         }
 
-        // 3. Limity miesięczne
         const { data: limitsData } = await supabaseClient.from('doctor_monthly_limits').select('*');
         if (limitsData) {
           state.monthly_limits = {};
@@ -781,7 +732,6 @@
           });
         }
 
-        // 4. Dyspozycje dyżurowe
         const { data: availData } = await supabaseClient.from('availabilities').select('*');
         if (availData) {
           state.availabilities = {};
@@ -790,7 +740,6 @@
           });
         }
 
-        // 5. Praca dzienna i nieobecności (doctor_day_records)
         try {
           const { data: dayRecData } = await supabaseClient.from('doctor_day_records').select('*');
           if (dayRecData) {
@@ -800,10 +749,9 @@
             });
           }
         } catch (e) {
-          console.warn("Tabela doctor_day_records jeszcze pusta lub nieutworzona:", e);
+          console.warn("Tabela doctor_day_records pusta:", e);
         }
 
-        // 6. Grafiki dyżurów
         const { data: shiftData } = await supabaseClient.from('shifts').select('*');
         if (shiftData) {
           state.shifts = {};
@@ -817,7 +765,6 @@
           });
         }
 
-        // 7. Obsada dzienna i zamknięte stanowiska
         try {
           const { data: assignData } = await supabaseClient.from('daily_station_assignments').select('*');
           if (assignData) {
@@ -855,16 +802,11 @@
 
     function switchView(viewName) {
       ['doctor', 'schedule', 'daily', 'admin'].forEach(v => {
-        const sec = document.getElementById(`view-${v}`);
-        if (sec) sec.style.display = 'none';
-        const btn = document.getElementById(`nav-${v}`);
+        const sec = document.getElementById(`view-${v}`); if (sec) sec.style.display = 'none'; const btn = document.getElementById(`nav-${v}`);
         if (btn) btn.className = "px-3.5 py-1.5 rounded-xl text-slate-600 hover:text-slate-900 transition flex items-center space-x-1.5";
       });
 
-      const activeSec = document.getElementById(`view-${viewName}`);
-      if (activeSec) activeSec.style.display = 'block';
-
-      const activeBtn = document.getElementById(`nav-${viewName}`);
+      const activeSec = document.getElementById(`view-${viewName}`); if (activeSec) activeSec.style.display = 'block';  const activeBtn = document.getElementById(`nav-${viewName}`);
       if (activeBtn) activeBtn.className = "px-3.5 py-1.5 rounded-xl bg-white text-slate-900 shadow-xs font-bold transition flex items-center space-x-1.5";
 
       if (viewName === 'schedule') renderScheduleTable();
@@ -872,20 +814,9 @@
       if (viewName === 'admin') renderDoctorsAdminTable();
     }
 
-    function handleDailyNavClick() {
+    function openAdminAuth() {
       if (isCoordinator) {
-        switchView('daily');
-      } else {
-        openAdminAuth(() => switchView('daily'));
-      }
-    }
-
-    let onAuthSuccessCallback = null;
-    function openAdminAuth(callback = null) {
-      onAuthSuccessCallback = callback;
-      if (isCoordinator) {
-        if (callback) callback();
-        else switchView('admin');
+        switchView('admin');
       } else {
         document.getElementById("admin-pin-input").value = "";
         document.getElementById("modal-pin-auth").style.display = 'flex';
@@ -894,7 +825,6 @@
 
     function closePinModal() {
       document.getElementById("modal-pin-auth").style.display = 'none';
-      onAuthSuccessCallback = null;
     }
 
     function handleVerifyPin(e) {
@@ -904,12 +834,7 @@
         isCoordinator = true;
         closePinModal();
         updateCoordinatorUI();
-        if (onAuthSuccessCallback) {
-          onAuthSuccessCallback();
-          onAuthSuccessCallback = null;
-        } else {
-          switchView('schedule');
-        }
+        switchView('schedule');
         showToast("Zalogowano jako Koordynator");
       } else {
         showToast("Nieprawidłowy PIN!", "error");
@@ -931,6 +856,8 @@
       const thAvail = document.getElementById("th-avail");
       const thStatus = document.getElementById("th-status");
       const banner = document.getElementById("doctor-privacy-banner");
+      const dailyCoordTools = document.getElementById("daily-coord-tools");
+      const dailyPoolCard = document.getElementById("daily-coord-pool-card");
 
       if (isCoordinator) {
         badge.className = "hidden sm:inline-flex items-center px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-bold shadow-2xs";
@@ -940,6 +867,9 @@
         if (statsPanel) statsPanel.style.display = 'block';
         if (thAvail) thAvail.style.display = 'table-cell';
         if (thStatus) thStatus.style.display = 'table-cell';
+        if (dailyCoordTools) dailyCoordTools.style.display = 'flex';
+        if (dailyPoolCard) dailyPoolCard.style.display = 'block';
+
         if (banner) {
           banner.className = "bg-emerald-50 border border-emerald-200 p-3.5 rounded-2xl flex items-center justify-between text-xs text-emerald-900";
           banner.innerHTML = `<div class="flex items-center space-x-2.5"><i class="fa-solid fa-shield-halved text-emerald-600 text-sm"></i><span><strong>Tryb Koordynatora:</strong> Widzisz pełne deklaracje wszystkich lekarzy, możesz publikować grafik i zarządzać obsadą dzienną.</span></div>`;
@@ -952,9 +882,12 @@
         if (statsPanel) statsPanel.style.display = 'none';
         if (thAvail) thAvail.style.display = 'none';
         if (thStatus) thStatus.style.display = 'none';
+        if (dailyCoordTools) dailyCoordTools.style.display = 'none';
+        if (dailyPoolCard) dailyPoolCard.style.display = 'none';
+
         if (banner) {
           banner.className = "bg-blue-50 border border-blue-200/80 p-3.5 rounded-2xl flex items-center justify-between text-xs text-blue-900";
-          banner.innerHTML = `<div class="flex items-center space-x-2.5"><i class="fa-solid fa-user-shield text-blue-600 text-sm"></i><span>Kliknij w dany dzień, aby ustawić <strong>godziny dzienne</strong> oraz <strong>chęć dyżuru</strong>. Po uzupełnieniu kliknij <strong>„Zapisz moją dyspozycję”</strong>.</span></div>`;
+          banner.innerHTML = `<div class="flex items-center space-x-2.5"><i class="fa-solid fa-user-shield text-blue-600 text-sm"></i><span>Kliknij w dany dzień, aby ustawić <strong>godziny pracy dziennej</strong> oraz <strong>chęć dyżuru</strong>. Po uzupełnieniu kliknij <strong>„Zapisz moją dyspozycję”</strong>.</span></div>`;
         }
       }
       renderScheduleTable();
@@ -1023,7 +956,6 @@
       const maxVal = parseInt(document.getElementById("doctor-max-shifts").value) || 7;
       const mKey = getCurrentMonthKey();
 
-      // 1. Zapisz limit miesięczny
       state.monthly_limits[`${selectedDoctorId}_${mKey}`] = { min: minVal, max: maxVal };
       await supabaseClient.from('doctor_monthly_limits').upsert({
         doctor_id: selectedDoctorId,
@@ -1032,7 +964,6 @@
         max_shifts: maxVal
       }, { onConflict: 'doctor_id,month' });
 
-      // 2. Zapisz dyspozycje dyżurowe
       for (const [dateStr, status] of Object.entries(localDoctorAvail)) {
         state.availabilities[`${selectedDoctorId}_${dateStr}`] = status;
         if (status === 'none') {
@@ -1046,7 +977,6 @@
         }
       }
 
-      // 3. Zapisz godziny dzienne i nieobecności (doctor_day_records)
       for (const [dateStr, workType] of Object.entries(localDoctorDayWork)) {
         state.day_records[`${selectedDoctorId}_${dateStr}`] = workType;
         if (workType === 'none') {
@@ -1088,35 +1018,11 @@
 
     function updateMonthLabel() {
       const months = ["Styczeń", "Luty", "Marzec", "Kwiecień", "Maj", "Czerwiec", "Lipiec", "Sierpień", "Wrzesień", "Październik", "Listopad", "Grudzień"];
-      const label = `${months[currentDate.getMonth()]} ${currentDate.getFullYear()}`;
+      const label = `${months[currentDate.getMonth()]}${currentDate.getFullYear()}`;
       document.getElementById("calendar-month-label").innerText = label;
       const schedLabel = document.getElementById("schedule-month-label");
       if (schedLabel) schedLabel.innerText = label;
-      document.getElementById("pdf-month-title").innerText = `Obsada Dyżurowa: ${label}`;
-    }
-
-    function getDaysInCurrentMonth() {
-      const year = currentDate.getFullYear();
-      const month = currentDate.getMonth();
-      const numDays = new Date(year, month + 1, 0).getDate();
-      const firstDayIndex = (new Date(year, month, 1).getDay() + 6) % 7;
-      return { numDays, firstDayIndex, year, month };
-    }
-
-    // ==================== KALENDARZ LEKARZA (WIDOK 1) ====================
-    function renderDoctorCalendar() {
-      const grid = document.getElementById("doctor-calendar-grid");
-      grid.innerHTML = "";
-      const { numDays, firstDayIndex, year, month } = getDaysInCurrentMonth();
-
-      for (let i = 0; i < firstDayIndex; i++) {
-        const empty = document.createElement("div");
-        empty.className = "h-24 bg-slate-50 border border-slate-100 rounded-2xl opacity-40";
-        grid.appendChild(empty);
-      }
-
-      for (let day = 1; day <= numDays; day++) {
-        const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      document.getElementById("pdf-month-title").innerText = `Obsada Dyżurowa: ${label}`; }  function getDaysInCurrentMonth() { const year = currentDate.getFullYear(); const month = currentDate.getMonth(); const numDays = new Date(year, month + 1, 0).getDate(); const firstDayIndex = (new Date(year, month, 1).getDay() + 6) \% 7; return { numDays, firstDayIndex, year, month }; }  // ==================== KALENDARZ LEKARZA (WIDOK 1) ==================== function renderDoctorCalendar() { const grid = document.getElementById("doctor-calendar-grid"); grid.innerHTML = ""; const { numDays, firstDayIndex, year, month } = getDaysInCurrentMonth();  for (let i = 0; i < firstDayIndex; i++) { const empty = document.createElement("div"); empty.className = "h-24 bg-slate-50 border border-slate-100 rounded-2xl opacity-40"; grid.appendChild(empty); }  for (let day = 1; day <= numDays; day++) { const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
         const dayOfWeek = new Date(year, month, day).getDay();
         const isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
         const isHoliday = isPolishPublicHoliday(year, month, day);
@@ -1124,7 +1030,6 @@
 
         const card = document.createElement("div");
 
-        // Statusy: z bazy (dla koordynatora) lub z bufora lokalnego (dla lekarza)
         let onCallStatus = 'none';
         let dayWork = 'none';
 
@@ -1140,7 +1045,6 @@
 
         let bgClass = isDayOff ? "bg-indigo-50/60 border-indigo-200 hover:border-indigo-300" : "bg-white border-slate-200 hover:border-slate-300";
 
-        // Odznaka pracy dziennej
         let workBadge = `<span class="text-[9px] text-slate-400">Dzień: brak wpisu</span>`;
         if (postCall) {
           workBadge = `<span class="text-[9px] font-bold text-amber-800 bg-amber-100 px-1.5 py-0.5 rounded">Zejście po dyżurze</span>`;
@@ -1154,7 +1058,6 @@
           bgClass = "bg-rose-50/50 border-rose-200";
         }
 
-        // Odznaka dyżuru
         let callBadge = "";
         if (postCall) {
           callBadge = `<span class="text-[9px] text-slate-400 italic">Dyżur zablokowany</span>`;
@@ -1175,8 +1078,7 @@
         card.className = `h-24 border rounded-2xl p-2 flex flex-col justify-between cursor-pointer transition select-none ${bgClass}`;
         card.innerHTML = `
           <div class="flex justify-between items-center">
-            <span class="font-bold text-xs ${isDayOff ? 'text-indigo-800' : 'text-slate-700'}">${day}</span>
-            ${dayBadgeText}
+            <span class="font-bold text-xs ${isDayOff ? 'text-indigo-800' : 'text-slate-700'}">${day}</span>${dayBadgeText}
           </div>
           <div class="space-y-1 text-center">
             <div>${workBadge}</div>
@@ -1187,26 +1089,8 @@
           </div>
         `;
 
-        card.onclick = () => openDayModal(dateStr, day, isHoliday ? `${dayOfWeek === 0 ? 'Niedziela' : 'Dzień powszedni'} (Święto)` : '');
-        grid.appendChild(card);
-      }
-    }
+        card.onclick = () => openDayModal(dateStr, day, isHoliday ? `${dayOfWeek === 0 ? 'Niedziela' : 'Dzień powszedni'} (Święto)` : ''); grid.appendChild(card); } }  // ==================== MODAL DEKLARACJI LEKARZA ==================== function openDayModal(dateStr, dayNum, suffix) { if (!selectedDoctorId) { showToast("Najpierw wybierz swoje nazwisko z listy u góry!", "error"); return; }  const doc = state.doctors.find(d => d.id === selectedDoctorId); const isSpec = doc && doc.role === 'specialist';  document.getElementById("modal-entry-date").value = dateStr; document.getElementById("modal-day-title").innerText = `Dyspozycja: ${dayNum} ${document.getElementById("calendar-month-label").innerText}`; document.getElementById("modal-day-desc").innerText = `${doc ? doc.name : ''} (${isSpec ? 'Specjalista' : 'Rezydent'}) ${suffix ? '• ' + suffix : ''}`;
 
-    // ==================== MODAL DEKLARACJI LEKARZA (WARIANT A) ====================
-    function openDayModal(dateStr, dayNum, suffix) {
-      if (!selectedDoctorId) {
-        showToast("Najpierw wybierz swoje nazwisko z listy u góry!", "error");
-        return;
-      }
-
-      const doc = state.doctors.find(d => d.id === selectedDoctorId);
-      const isSpec = doc && doc.role === 'specialist';
-
-      document.getElementById("modal-entry-date").value = dateStr;
-      document.getElementById("modal-day-title").innerText = `Dyspozycja: ${dayNum} ${document.getElementById("calendar-month-label").innerText}`;
-      document.getElementById("modal-day-desc").innerText = `${doc ? doc.name : ''} (${isSpec ? 'Specjalista' : 'Rezydent'}) ${suffix ? '• ' + suffix : ''}`;
-
-      // Blokada opcji 7-19 dla rezydentów
       const radioLong = document.getElementById("radio-work-long");
       const labelLong = document.getElementById("label-work-long");
       if (!isSpec) {
@@ -1219,21 +1103,17 @@
         labelLong.title = "";
       }
 
-      // Sprawdzenie, czy lekarz nie ma zejścia po dyżurze
       const postCall = isDoctorPostCall(selectedDoctorId, dateStr);
       const onCallSec = document.getElementById("modal-oncall-section");
 
-      // Pobierz obecne wartości (z bufora lub bazy)
       const currentWork = localDoctorDayWork[dateStr] !== undefined ? localDoctorDayWork[dateStr] : (state.day_records[`${selectedDoctorId}_${dateStr}`] || 'none');
       const currentOnCall = localDoctorAvail[dateStr] !== undefined ? localDoctorAvail[dateStr] : (state.availabilities[`${selectedDoctorId}_${dateStr}`] || 'none');
 
-      // Zaznacz radio praca dzienna
       const workRadios = document.getElementsByName("modal-day-work");
       workRadios.forEach(r => {
         r.checked = (r.value === currentWork);
       });
 
-      // Zaznacz radio dyżur
       const callRadios = document.getElementsByName("modal-oncall");
       callRadios.forEach(r => {
         r.checked = (r.value === currentOnCall);
@@ -1257,7 +1137,6 @@
       const selectedWork = document.querySelector('input[name="modal-day-work"]:checked')?.value;
       const onCallSec = document.getElementById("modal-oncall-section");
       
-      // Jeśli lekarz zaznaczył nieobecność, ukrywamy i blokujemy chęć dyżuru
       if (selectedWork === 'absent') {
         if (onCallSec) onCallSec.style.opacity = '0.3';
         const callRadios = document.getElementsByName("modal-oncall");
@@ -1285,7 +1164,7 @@
       showToast("Zastosowano. Pamiętaj kliknąć „Zapisz moją dyspozycję” u góry.");
     }
 
-    // ==================== ZARZĄDZANIE PUBLIKACJĄ GRAFIKU ====================
+    // ==================== ZARZĄDZANIE PUBLIKACJĄ GRAFIKU MIESIĘCZNEGO ====================
     async function togglePublishSchedule() {
       if (!isCoordinator) return;
       const mKey = getCurrentMonthKey();
@@ -1295,15 +1174,15 @@
       state.published_months[mKey] = newStatus;
 
       const { error } = await supabaseClient.from('app_settings').upsert({
-        key: `schedule_published_${mKey}`,
+        key: `schedule_published_${mKey}`, value: String(newStatus) });  if (!error) { showToast(newStatus ? "Grafik został opublikowany dla lekarzy!" : "Cofnięto publikację grafiku (tryb szkicu)"); renderScheduleTable(); renderDoctorCalendar(); renderDailyBoard(); } else { showToast("Błąd zapisu statusu publikacji", "error"); } }  // ==================== PUBLIKACJA OBSADY DZIENNEJ ==================== async function toggleDailyPublish() { if (!isCoordinator) return; const dateStr = currentDailyDate; const currentPublished = isCurrentDailyPublished(); const newStatus = !currentPublished;  state.published_days[dateStr] = newStatus;  const { error } = await supabaseClient.from('app_settings').upsert({ key: `daily_published_${dateStr}`,
         value: String(newStatus)
       });
 
       if (!error) {
-        showToast(newStatus ? "Grafik został opublikowany dla lekarzy!" : "Cofnięto publikację grafiku (tryb szkicu)");
-        renderScheduleTable();
+        showToast(newStatus ? "Obsada dzienna została opublikowana dla lekarzy!" : "Cofnięto publikację obsady dziennej (tryb szkicu)");
+        renderDailyBoard();
       } else {
-        showToast("Błąd zapisu statusu publikacji", "error");
+        showToast("Błąd zapisu statusu publikacji obsady dziennej", "error");
       }
     }
 
@@ -1394,12 +1273,7 @@
 
         let availCount = 0;
         state.doctors.forEach(doc => {
-          const st = state.availabilities[`${doc.id}_${dateStr}`];
-          if (st === 'available' || st === 'preferred') availCount++;
-        });
-
-        const dayName = ['Nd','Pn','Wt','Śr','Cz','Pt','Sb'][dayOfWeek];
-        const dayLabelSuffix = isHoliday ? `${dayName} - Święto` : dayName;
+          const st = state.availabilities[`${doc.id}_${dateStr}`]; if (st === 'available' \vert{}\vert{} st === 'preferred') availCount++; });  const dayName = ['Nd','Pn','Wt','Śr','Cz','Pt','Sb'][dayOfWeek]; const dayLabelSuffix = isHoliday ? `${dayName} - Święto` : dayName;
 
         const tr = document.createElement("tr");
         tr.className = rowClass;
@@ -1420,8 +1294,7 @@
           <td class="p-2">${renderDoctorSlot(dateStr, 1, currentShift.doctor1_id, d1, true)}</td>
           <td class="p-2">${renderDoctorSlot(dateStr, 2, currentShift.doctor2_id, d2, false)}</td>
           <td class="p-2">${renderDoctorSlot(dateStr, 3, currentShift.doctor3_id, d3, false)}</td>
-          <td class="p-2">${renderDoctorSlot(dateStr, 4, currentShift.doctor4_id, d4, false)}</td>
-          ${coordCols}
+          <td class="p-2">${renderDoctorSlot(dateStr, 4, currentShift.doctor4_id, d4, false)}</td>${coordCols}
         `;
         tbody.appendChild(tr);
       }
@@ -1448,9 +1321,8 @@
       const otherDocs = [];
 
       state.doctors.forEach(doc => {
-        // Sprawdź, czy lekarz ma zejście po wczorajszym dyżurze
         const postCall = isDoctorPostCall(doc.id, dateStr);
-        if (postCall && doc.id !== currentId) return; // Ukryj lekarza na zejściu przed wyborem do dyżuru
+        if (postCall && doc.id !== currentId) return;
 
         const st = state.availabilities[`${doc.id}_${dateStr}`];
         if (st === 'preferred' || st === 'available') {
@@ -1478,688 +1350,4 @@
         const role = doc.role === 'specialist' ? 'Specjalista' : 'Rezydent';
         optGroupOthers += `<option value="${doc.id}" ${isSel} class="text-slate-500">[${tag}] ${doc.name} (${role})</option>`;
       });
-      optGroupOthers += `</optgroup>`;
-
-      return `
-        <div>
-          <select onchange="updateShiftSlot('${dateStr}', ${slotIndex}, this.value)" 
-            class="w-full text-xs bg-white border ${docObj ? 'border-slate-300' : 'border-rose-400 bg-rose-50/50'} rounded-lg p-1.5 focus:ring-1 focus:ring-blue-500 outline-none cursor-pointer">
-            <option value="">-- Wolny wakat --</option>
-            ${declaredDocs.length > 0 ? optGroupDeclared : ''}
-            ${optGroupOthers}
-          </select>
-        </div>
-      `;
-    }
-
-    function updateShiftSlot(dateStr, slotIndex, docId) {
-      if (!isCoordinator) return;
-      if (!state.shifts[dateStr]) {
-        state.shifts[dateStr] = { doctor1_id: null, doctor2_id: null, doctor3_id: null, doctor4_id: null };
-      }
-      state.shifts[dateStr][`doctor${slotIndex}_id`] = docId || null;
-      renderScheduleTable();
-      renderDailyBoard();
-    }
-
-    function openAvailModal(dateStr, label) {
-      document.getElementById("modal-avail-date-title").innerText = `Dyspozycje lekarzy: ${label}`;
-      const list = document.getElementById("modal-avail-list");
-      list.innerHTML = "";
-
-      state.doctors.forEach(doc => {
-        const status = state.availabilities[`${doc.id}_${dateStr}`] || 'none';
-        const dayWork = state.day_records[`${doc.id}_${dateStr}`] || 'none';
-        const postCall = isDoctorPostCall(doc.id, dateStr);
-
-        let badge = `<span class="text-slate-400 font-medium">Brak deklaracji dyżuru</span>`;
-        if (postCall) badge = `<span class="font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded-md">Zejście po dyżurze</span>`;
-        else if (status === 'preferred') badge = `<span class="font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-md">Chcę dyżur</span>`;
-        else if (status === 'available') badge = `<span class="font-bold text-sky-800 bg-sky-100 px-2 py-0.5 rounded-md">Mogę dyżur</span>`;
-        else if (status === 'unavailable') badge = `<span class="font-bold text-rose-800 bg-rose-100 px-2 py-0.5 rounded-md">Niedostępny / Urlop</span>`;
-
-        let workBadge = "";
-        if (dayWork === 'standard_7_1435') workBadge = `<span class="text-[10px] font-semibold text-slate-700 bg-slate-200 px-1.5 py-0.5 rounded">7-14:35</span>`;
-        else if (dayWork === 'long_7_19') workBadge = `<span class="text-[10px] font-semibold text-indigo-700 bg-indigo-100 px-1.5 py-0.5 rounded">7-19</span>`;
-        else if (dayWork === 'absent') workBadge = `<span class="text-[10px] font-semibold text-rose-700 bg-rose-100 px-1.5 py-0.5 rounded">Nieobecny</span>`;
-
-        const div = document.createElement("div");
-        div.className = "flex justify-between items-center p-2 rounded-xl bg-slate-50 border border-slate-100";
-        div.innerHTML = `
-          <div>
-            <span class="font-bold text-slate-800">${doc.name}</span>
-            <span class="text-[10px] text-slate-500 ml-1">(${doc.role === 'specialist' ? 'Specjalista' : 'Rezydent'})</span>
-            <div class="mt-0.5">${workBadge}</div>
-          </div>
-          <div>${badge}</div>
-        `;
-        list.appendChild(div);
-      });
-
-      document.getElementById("modal-avail-details").style.display = 'flex';
-    }
-
-    function closeAvailModal() {
-      document.getElementById("modal-avail-details").style.display = 'none';
-    }
-
-    // ==================== GENEROWANIE AUTOMATYCZNE GRAFIKU ====================
-    function generateAutomaticSchedule() {
-      if (!isCoordinator) return;
-      const { numDays, year, month } = getDaysInCurrentMonth();
-      const mKey = getCurrentMonthKey();
-
-      const shiftCounts = {};
-      state.doctors.forEach(d => { shiftCounts[d.id] = 0; });
-      const newShifts = {};
-
-      for (let day = 1; day <= numDays; day++) {
-        const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-        const prevDateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day - 1).padStart(2, '0')}`;
-        
-        const prevAssigned = prevDateStr in newShifts 
-          ? [
-              newShifts[prevDateStr].doctor1_id, 
-              newShifts[prevDateStr].doctor2_id, 
-              newShifts[prevDateStr].doctor3_id,
-              newShifts[prevDateStr].doctor4_id
-            ].filter(Boolean)
-          : [];
-
-        // Filtrujemy tylko lekarzy dostępnych, którzy nie dyżurowali wczoraj i nie zgłosili nieobecności
-        const eligibleDocs = state.doctors.filter(doc => {
-          if (prevAssigned.includes(doc.id)) return false;
-          if (state.day_records[`${doc.id}_${dateStr}`] === 'absent') return false;
-          const pref = state.availabilities[`${doc.id}_${dateStr}`];
-          return pref === 'preferred' || pref === 'available';
-        });
-
-        const getDocScore = (doc) => {
-          const pref = state.availabilities[`${doc.id}_${dateStr}`];
-          const limits = state.monthly_limits[`${doc.id}_${mKey}`] || { min: 5, max: 7 };
-          
-          let score = 200 - (shiftCounts[doc.id] * 20);
-          if (pref === 'preferred') score += 50;
-          if (shiftCounts[doc.id] < limits.min) score += 40;
-          if (shiftCounts[doc.id] >= limits.max) score -= 50;
-          return score;
-        };
-
-        let availSpecs = eligibleDocs.filter(d => d.role === 'specialist').sort((a, b) => getDocScore(b) - getDocScore(a));
-        let availRes = eligibleDocs.filter(d => d.role === 'resident').sort((a, b) => getDocScore(b) - getDocScore(a));
-
-        const chosenToday = [];
-
-        // 1. Zapewnij min. 1 specjalistę na Stanowisku 1
-        if (availSpecs.length > 0) {
-          chosenToday.push(availSpecs.shift());
-        }
-
-        // 2. Wypełnij pozostałe sloty (do 4 osób)
-        while (chosenToday.length < 4 && (availSpecs.length > 0 || availRes.length > 0)) {
-          const currentSpecs = chosenToday.filter(d => d.role === 'specialist').length;
-          const currentRes = chosenToday.filter(d => d.role === 'resident').length;
-
-          if (currentSpecs < 2 && availSpecs.length > 0) {
-            chosenToday.push(availSpecs.shift());
-          } else if (currentRes < 2 && availRes.length > 0) {
-            chosenToday.push(availRes.shift());
-          } else if (availRes.length > 0) {
-            chosenToday.push(availRes.shift());
-          } else if (availSpecs.length > 0) {
-            chosenToday.push(availSpecs.shift());
-          } else {
-            break;
-          }
-        }
-
-        chosenToday.forEach(d => { shiftCounts[d.id]++; });
-
-        newShifts[dateStr] = {
-          doctor1_id: chosenToday[0] ? chosenToday[0].id : null,
-          doctor2_id: chosenToday[1] ? chosenToday[1].id : null,
-          doctor3_id: chosenToday[2] ? chosenToday[2].id : null,
-          doctor4_id: chosenToday[3] ? chosenToday[3].id : null
-        };
-      }
-
-      state.shifts = newShifts;
-      renderScheduleTable();
-      renderDailyBoard();
-      showToast("Wygenerowano szkic grafiku!");
-    }
-
-    async function saveScheduleToSupabase(notify = true) {
-      if (!isCoordinator) return;
-      try {
-        const rows = Object.entries(state.shifts).map(([date, s]) => ({
-          date,
-          doctor1_id: s.doctor1_id,
-          doctor2_id: s.doctor2_id,
-          doctor3_id: s.doctor3_id,
-          doctor4_id: s.doctor4_id,
-          updated_at: new Date().toISOString()
-        }));
-
-        const { error } = await supabaseClient.from('shifts').upsert(rows, { onConflict: 'date' });
-        if (!error) {
-          if (notify) showToast("Szkic grafiku zapisany w bazie!");
-        } else {
-          showToast("Błąd zapisu grafiku", "error");
-        }
-      } catch (err) {
-        showToast("Błąd bazy danych", "error");
-      }
-    }
-
-    function renderDoctorStats() {
-      const statsDiv = document.getElementById("stats-container");
-      if (!statsDiv) return;
-      statsDiv.innerHTML = "";
-
-      const mKey = getCurrentMonthKey();
-      const counts = {};
-      state.doctors.forEach(d => counts[d.id] = 0);
-
-      Object.values(state.shifts).forEach(s => {
-        if (s.doctor1_id && counts[s.doctor1_id] !== undefined) counts[s.doctor1_id]++;
-        if (s.doctor2_id && counts[s.doctor2_id] !== undefined) counts[s.doctor2_id]++;
-        if (s.doctor3_id && counts[s.doctor3_id] !== undefined) counts[s.doctor3_id]++;
-        if (s.doctor4_id && counts[s.doctor4_id] !== undefined) counts[s.doctor4_id]++;
-      });
-
-      state.doctors.forEach(doc => {
-        const count = counts[doc.id] || 0;
-        const limits = state.monthly_limits[`${doc.id}_${mKey}`] || { min: 5, max: 7 };
-        
-        let colorClass = "text-slate-700";
-        if (count < limits.min) colorClass = "text-amber-600 font-bold";
-        else if (count > limits.max) colorClass = "text-rose-600 font-bold";
-        else colorClass = "text-emerald-700 font-bold";
-
-        const card = document.createElement("div");
-        card.className = "bg-slate-50 border border-slate-200 p-2.5 rounded-xl flex justify-between items-center text-xs";
-        card.innerHTML = `
-          <div>
-            <div class="font-bold text-slate-800">${doc.name}</div>
-            <div class="text-[10px] text-slate-500 font-medium">${doc.role === 'specialist' ? '★ Specjalista' : 'Rezydent'} (cel: ${limits.min}-${limits.max})</div>
-          </div>
-          <span class="text-sm ${colorClass}">${count} / ${limits.min}-${limits.max}</span>
-        `;
-        statsDiv.appendChild(card);
-      });
-    }
-
-    // ==================== MODUŁ OBSADY DZIENNEJ (DRAG & DROP) ====================
-    function handleDailyDateInput(val) {
-      if (!val) return;
-      currentDailyDate = val;
-      renderDailyBoard();
-    }
-
-    function changeDailyDay(delta) {
-      const [y, m, d] = currentDailyDate.split('-').map(Number);
-      const nextDate = new Date(y, m - 1, d + delta);
-      currentDailyDate = `${nextDate.getFullYear()}-${String(nextDate.getMonth() + 1).padStart(2, '0')}-${String(nextDate.getDate()).padStart(2, '0')}`;
-      document.getElementById("daily-date-picker").value = currentDailyDate;
-      renderDailyBoard();
-    }
-
-    function switchDailyTab(tabKey) {
-      currentDailyTab = tabKey;
-      ['blok', 'pracownie', 'oddzial', 'interwencje'].forEach(k => {
-        const btn = document.getElementById(`tab-btn-${k}`);
-        const content = document.getElementById(`tab-content-${k}`);
-        if (k === tabKey) {
-          btn.className = "px-4 py-2 rounded-xl bg-white text-slate-900 shadow-xs transition";
-          content.style.display = (k === 'oddzial' || k === 'interwencje') ? 'grid' : 'grid';
-        } else {
-          btn.className = "px-4 py-2 rounded-xl text-slate-600 hover:text-slate-900 transition";
-          content.style.display = 'none';
-        }
-      });
-    }
-
-    function renderDailyBoard() {
-      const dateStr = currentDailyDate;
-      if (!state.daily_assignments[dateStr]) state.daily_assignments[dateStr] = {};
-      if (!state.daily_closed_stations[dateStr]) state.daily_closed_stations[dateStr] = [];
-
-      const currentAssignments = state.daily_assignments[dateStr];
-      const closedStations = state.daily_closed_stations[dateStr];
-
-      // Kto ma dyżur w tym dniu
-      const shiftObj = state.shifts[dateStr] || {};
-      const onCallDoctorIds = [shiftObj.doctor1_id, shiftObj.doctor2_id, shiftObj.doctor3_id, shiftObj.doctor4_id].filter(Boolean);
-
-      // Kto jest już przypisany do jakiegokolwiek stanowiska
-      const alreadyAssignedDocIds = [];
-      Object.values(currentAssignments).forEach(arr => {
-        if (Array.isArray(arr)) alreadyAssignedDocIds.push(...arr);
-      });
-
-      // Pula dostępnych lekarzy
-      const poolDoctors = [];
-      const postCallDocs = [];
-      const absentDocs = [];
-
-      state.doctors.forEach(doc => {
-        const isPostCall = isDoctorPostCall(doc.id, dateStr);
-        const dayWork = state.day_records[`${doc.id}_${dateStr}`] || 'none';
-        const isOnCall = onCallDoctorIds.includes(doc.id);
-
-        if (dayWork === 'absent') {
-          absentDocs.push(doc);
-          return;
-        }
-
-        if (isPostCall) {
-          postCallDocs.push(doc);
-          return;
-        }
-
-        // Lekarz jest dostępny do pracy dziennej jeśli:
-        // 1. Zadeklarował 7-14:35 LUB 7-19 LUB
-        // 2. Pełni dyżur w tym dniu LUB
-        // 3. Koordynator chce go ręcznie przydzielić
-        const isWorkingDay = (dayWork === 'standard_7_1435' || dayWork === 'long_7_19' || isOnCall);
-
-        if (isWorkingDay && !alreadyAssignedDocIds.includes(doc.id)) {
-          poolDoctors.push({
-            doc,
-            dayWork,
-            isOnCall
-          });
-        }
-      });
-
-      // Renderowanie kafelków w puli
-      const poolDiv = document.getElementById("daily-pool-container");
-      poolDiv.innerHTML = "";
-      document.getElementById("daily-available-count").innerText = `${poolDoctors.length} osób w puli`;
-
-      if (poolDoctors.length === 0) {
-        poolDiv.innerHTML = `<span class="text-xs text-slate-400 italic py-2">Wszyscy obecni lekarze zostali już przypisani do stanowisk lub brak deklaracji na ten dzień.</span>`;
-      } else {
-        poolDoctors.forEach(({ doc, dayWork, isOnCall }) => {
-          const card = createDraggableDoctorCard(doc, dayWork, isOnCall);
-          poolDiv.appendChild(card);
-        });
-      }
-
-      // Podsumowanie nieobecnych i zejściowych
-      const offSummaryDiv = document.getElementById("daily-off-summary");
-      offSummaryDiv.innerHTML = `
-        <div class="flex items-center space-x-1">
-          <i class="fa-solid fa-bed text-amber-500 mr-1"></i>
-          <span>Zejście po dyżurze (${postCallDocs.length}):</span>
-          <span class="font-bold text-slate-700">${postCallDocs.map(d => d.name).join(', ') || 'brak'}</span>
-        </div>
-        <div class="flex items-center space-x-1">
-          <i class="fa-solid fa-umbrella-beach text-rose-500 mr-1"></i>
-          <span>Nieobecni (${absentDocs.length}):</span>
-          <span class="font-bold text-slate-700">${absentDocs.map(d => d.name).join(', ') || 'brak'}</span>
-        </div>
-      `;
-
-      // Renderowanie poszczególnych zakładek stanowisk
-      ['blok', 'pracownie', 'oddzial', 'interwencje'].forEach(tabKey => {
-        const container = document.getElementById(`tab-content-${tabKey}`);
-        container.innerHTML = "";
-        const stations = STATIONS_DEF[tabKey];
-
-        stations.forEach(station => {
-          const isClosed = closedStations.includes(station.id);
-          const assignedIds = currentAssignments[station.id] || [];
-          const assignedDoctors = assignedIds.map(id => state.doctors.find(d => d.id === id)).filter(Boolean);
-
-          const stationCard = document.createElement("div");
-          stationCard.className = `border rounded-2xl p-4 flex flex-col justify-between transition ${isClosed ? 'bg-slate-100/70 border-slate-200 opacity-60' : 'bg-white border-slate-200/90 shadow-2xs'}`;
-
-          let toggleBtnHtml = "";
-          if (station.single) {
-            toggleBtnHtml = `
-              <button onclick="toggleStationClosed('${station.id}')" title="${isClosed ? 'Otwórz stanowisko' : 'Zamknij stanowisko'}" class="text-[10px] font-bold px-2 py-0.5 rounded-lg border transition ${isClosed ? 'bg-amber-100 text-amber-800 border-amber-300 hover:bg-amber-200' : 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200'}">
-                ${isClosed ? 'Zamknięta' : 'Aktywna'}
-              </button>
-            `;
-          }
-
-          let assignedContentHtml = "";
-          if (isClosed) {
-            assignedContentHtml = `<div class="h-20 flex items-center justify-center text-xs text-slate-400 font-semibold italic">Stanowisko wyłączone / zamknięte</div>`;
-          } else {
-            assignedContentHtml = `
-              <div id="dropzone-${station.id}" 
-                ondragover="handleDragOver(event)" 
-                ondragleave="handleDragLeave(event)" 
-                ondrop="handleDropToStation(event, '${station.id}', ${station.single})" 
-                class="min-h-[72px] p-2 bg-slate-50 border border-dashed border-slate-300 rounded-xl flex flex-wrap gap-1.5 items-center transition">
-                ${assignedDoctors.length === 0 ? `<span class="text-[11px] text-slate-400 italic m-auto">Przeciągnij lekarza tutaj</span>` : ''}
-              </div>
-            `;
-          }
-
-          stationCard.innerHTML = `
-            <div class="flex justify-between items-start mb-2.5">
-              <div>
-                <h4 class="font-extrabold text-xs text-slate-900 tracking-tight">${station.name}</h4>
-                <p class="text-[10px] text-slate-400">${station.single ? '1 lekarz anestezjolog' : 'Pula stanowiska (wielu)'}</p>
-              </div>
-              ${toggleBtnHtml}
-            </div>
-            ${assignedContentHtml}
-          `;
-
-          container.appendChild(stationCard);
-
-          // Wstawienie przypisanych kart lekarzy do strefy zrzutu
-          if (!isClosed && assignedDoctors.length > 0) {
-            const dropzone = stationCard.querySelector(`#dropzone-${station.id}`);
-            dropzone.innerHTML = "";
-            assignedDoctors.forEach(doc => {
-              const dayWork = state.day_records[`${doc.id}_${dateStr}`] || 'none';
-              const isOnCall = onCallDoctorIds.includes(doc.id);
-              const card = createDraggableDoctorCard(doc, dayWork, isOnCall, station.id);
-              dropzone.appendChild(card);
-            });
-          }
-        });
-      });
-    }
-
-    function createDraggableDoctorCard(doc, dayWork, isOnCall, currentStationId = null) {
-      const card = document.createElement("div");
-      card.draggable = true;
-      card.id = `doc-drag-${doc.id}`;
-      card.ondragstart = (e) => handleDragStart(e, doc.id, currentStationId);
-
-      let tagWork = "7:00-14:35";
-      let tagBg = "bg-slate-200 text-slate-700";
-
-      if (dayWork === 'long_7_19') {
-        tagWork = "7:00-19:00";
-        tagBg = "bg-indigo-100 text-indigo-800";
-      }
-
-      let onCallBadge = "";
-      if (isOnCall) {
-        onCallBadge = `<span class="bg-rose-100 text-rose-800 text-[9px] font-extrabold px-1.5 py-0.2 rounded border border-rose-200">Dyżur</span>`;
-      }
-
-      card.className = "draggable-card bg-white border border-slate-200 hover:border-brand-500 px-2.5 py-1.5 rounded-xl shadow-2xs flex items-center space-x-2 text-xs select-none transition";
-      card.innerHTML = `
-        <div class="font-bold text-slate-800">${doc.name}</div>
-        <span class="text-[9px] font-semibold px-1.5 py-0.2 rounded ${tagBg}">${tagWork}</span>
-        ${onCallBadge}
-        ${currentStationId ? `<button onclick="removeDocFromStation('${currentStationId}', '${doc.id}')" class="text-slate-400 hover:text-rose-600 ml-1 text-xs"><i class="fa-solid fa-xmark"></i></button>` : ''}
-      `;
-      return card;
-    }
-
-    // Drag & Drop Handlers
-    let draggedDoctorId = null;
-    let draggedFromStationId = null;
-
-    function handleDragStart(e, doctorId, fromStationId) {
-      draggedDoctorId = doctorId;
-      draggedFromStationId = fromStationId;
-      e.dataTransfer.setData("text/plain", doctorId);
-    }
-
-    function handleDragOver(e) {
-      e.preventDefault();
-      e.currentTarget.classList.add("drop-zone-active");
-    }
-
-    function handleDragLeave(e) {
-      e.currentTarget.classList.remove("drop-zone-active");
-    }
-
-    function handleDropToStation(e, targetStationId, isSingle) {
-      e.preventDefault();
-      e.currentTarget.classList.remove("drop-zone-active");
-
-      const dateStr = currentDailyDate;
-      if (!state.daily_assignments[dateStr]) state.daily_assignments[dateStr] = {};
-      const assignments = state.daily_assignments[dateStr];
-
-      if (!assignments[targetStationId]) assignments[targetStationId] = [];
-
-      // Usuń lekarza z poprzedniego stanowiska
-      if (draggedFromStationId) {
-        assignments[draggedFromStationId] = (assignments[draggedFromStationId] || []).filter(id => id !== draggedDoctorId);
-      }
-
-      // Jeśli stanowisko jest jednoosobowe i już kogoś ma, przenieś poprzedniego do puli wolnych
-      if (isSingle && assignments[targetStationId].length > 0) {
-        assignments[targetStationId] = [draggedDoctorId];
-      } else {
-        if (!assignments[targetStationId].includes(draggedDoctorId)) {
-          assignments[targetStationId].push(draggedDoctorId);
-        }
-      }
-
-      draggedDoctorId = null;
-      draggedFromStationId = null;
-      renderDailyBoard();
-    }
-
-    function handleDropToPool(e) {
-      e.preventDefault();
-      e.currentTarget.classList.remove("drop-zone-active");
-
-      if (draggedFromStationId) {
-        removeDocFromStation(draggedFromStationId, draggedDoctorId);
-      }
-      draggedDoctorId = null;
-      draggedFromStationId = null;
-    }
-
-    function removeDocFromStation(stationId, doctorId) {
-      const dateStr = currentDailyDate;
-      if (state.daily_assignments[dateStr] && state.daily_assignments[dateStr][stationId]) {
-        state.daily_assignments[dateStr][stationId] = state.daily_assignments[dateStr][stationId].filter(id => id !== doctorId);
-        renderDailyBoard();
-      }
-    }
-
-    function toggleStationClosed(stationId) {
-      const dateStr = currentDailyDate;
-      if (!state.daily_closed_stations[dateStr]) state.daily_closed_stations[dateStr] = [];
-      const list = state.daily_closed_stations[dateStr];
-
-      if (list.includes(stationId)) {
-        state.daily_closed_stations[dateStr] = list.filter(id => id !== stationId);
-      } else {
-        state.daily_closed_stations[dateStr].push(stationId);
-        // Jeśli zamykamy salę z lekarzem, usuń go do puli
-        if (state.daily_assignments[dateStr] && state.daily_assignments[dateStr][stationId]) {
-          state.daily_assignments[dateStr][stationId] = [];
-        }
-      }
-      renderDailyBoard();
-    }
-
-    async function saveDailyStationAssignments() {
-      if (!isCoordinator) return;
-      const dateStr = currentDailyDate;
-
-      try {
-        // 1. Zapisz zamknięte stanowiska
-        await supabaseClient.from('daily_closed_stations').delete().match({ date: dateStr });
-        const closedRows = (state.daily_closed_stations[dateStr] || []).map(station_id => ({
-          date: dateStr,
-          station_id
-        }));
-        if (closedRows.length > 0) {
-          await supabaseClient.from('daily_closed_stations').insert(closedRows);
-        }
-
-        // 2. Zapisz przydziały lekarzy
-        await supabaseClient.from('daily_station_assignments').delete().match({ date: dateStr });
-        const assignRows = [];
-        const currentAssignments = state.daily_assignments[dateStr] || {};
-        Object.entries(currentAssignments).forEach(([station_id, docList]) => {
-          docList.forEach(doctor_id => {
-            assignRows.push({
-              date: dateStr,
-              station_id,
-              doctor_id
-            });
-          });
-        });
-
-        if (assignRows.length > 0) {
-          await supabaseClient.from('daily_station_assignments').insert(assignRows);
-        }
-
-        showToast("Zapisano obsadę dzienną w bazie!");
-      } catch (e) {
-        showToast("Błąd zapisu obsady dziennej", "error");
-      }
-    }
-
-    // ==================== ZARZĄDZANIE PERSONELEM (ADMIN) ====================
-    function renderDoctorsAdminTable() {
-      const tbody = document.getElementById("doctors-table-body");
-      if (!tbody) return;
-      document.getElementById("doctor-count-badge").innerText = `${state.doctors.length} lekarzy`;
-      tbody.innerHTML = "";
-
-      state.doctors.forEach(doc => {
-        const tr = document.createElement("tr");
-        tr.className = "hover:bg-slate-50 transition";
-        tr.innerHTML = `
-          <td class="p-3.5 font-bold text-slate-800">${doc.name}</td>
-          <td class="p-3.5">
-            <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold ${doc.role === 'specialist' ? 'bg-brand-50 text-brand-700 border border-brand-100' : 'bg-slate-100 text-slate-600'}">
-              ${doc.role === 'specialist' ? '★ Specjalista' : 'Rezydent'}
-            </span>
-          </td>
-          <td class="p-3.5 text-right space-x-1.5">
-            <button onclick="openEditDoctorModal('${doc.id}')" class="text-brand-600 hover:text-brand-800 text-xs font-bold bg-brand-50 px-2.5 py-1 rounded-lg border border-brand-100 transition">
-              <i class="fa-solid fa-pen-to-square mr-1"></i> Edytuj
-            </button>
-            <button onclick="deleteDoctor('${doc.id}')" class="text-rose-600 hover:text-rose-800 text-xs font-bold bg-rose-50 px-2.5 py-1 rounded-lg border border-rose-200 transition">
-              <i class="fa-solid fa-trash-can mr-1"></i> Usuń
-            </button>
-          </td>
-        `;
-        tbody.appendChild(tr);
-      });
-    }
-
-    async function handleAddDoctor(e) {
-      e.preventDefault();
-      if (!isCoordinator) return;
-      const name = document.getElementById("new-doc-name").value.trim();
-      const role = document.getElementById("new-doc-role").value;
-
-      if (!name) return;
-      const { data, error } = await supabaseClient.from('doctors').insert([{ name, role }]).select().single();
-      if (!error && data) {
-        state.doctors.push(data);
-      }
-      document.getElementById("new-doc-name").value = "";
-      renderDoctorsAdminTable();
-      populateDoctorSelect();
-      showToast("Dodano lekarza");
-    }
-
-    function openEditDoctorModal(id) {
-      if (!isCoordinator) return;
-      const doc = state.doctors.find(d => d.id === id);
-      if (!doc) return;
-      document.getElementById("edit-doc-id").value = doc.id;
-      document.getElementById("edit-doc-name").value = doc.name;
-      document.getElementById("edit-doc-role").value = doc.role;
-      document.getElementById("modal-edit-doctor").style.display = 'flex';
-    }
-
-    function closeEditModal() {
-      document.getElementById("modal-edit-doctor").style.display = 'none';
-    }
-
-    async function handleSaveEditDoctor(e) {
-      e.preventDefault();
-      if (!isCoordinator) return;
-      const id = document.getElementById("edit-doc-id").value;
-      const name = document.getElementById("edit-doc-name").value.trim();
-      const role = document.getElementById("edit-doc-role").value;
-
-      await supabaseClient.from('doctors').update({ name, role }).eq('id', id);
-      const idx = state.doctors.findIndex(d => d.id === id);
-      if (idx !== -1) state.doctors[idx] = { id, name, role };
-      closeEditModal();
-      renderDoctorsAdminTable();
-      populateDoctorSelect();
-      showToast("Zaktualizowano dane lekarza");
-    }
-
-    async function deleteDoctor(id) {
-      if (!isCoordinator) return;
-      if (!confirm("Czy na pewno usunąć tego lekarza? Spowoduje to usunięcie jego deklaracji.")) return;
-      await supabaseClient.from('doctors').delete().eq('id', id);
-      state.doctors = state.doctors.filter(d => d.id !== id);
-      renderDoctorsAdminTable();
-      populateDoctorSelect();
-      showToast("Lekarz usunięty");
-    }
-
-    // ==================== GENEROWANIE CZYSTEGO PDF ====================
-    function downloadExactPDF() {
-      const pdfTableBody = document.getElementById("pdf-table-body");
-      pdfTableBody.innerHTML = "";
-      
-      const { numDays, year, month } = getDaysInCurrentMonth();
-      const months = ["Styczeń", "Luty", "Marzec", "Kwiecień", "Maj", "Czerwiec", "Lipiec", "Sierpień", "Wrzesień", "Październik", "Listopad", "Grudzień"];
-      const label = `${months[month]} ${year}`;
-      document.getElementById("pdf-month-title").innerText = `Obsada Dyżurowa: ${label}`;
-
-      for (let day = 1; day <= numDays; day++) {
-        const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-        const dayOfWeek = new Date(year, month, day).getDay();
-        const isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
-        const isHoliday = isPolishPublicHoliday(year, month, day);
-        const isDayOff = isWeekend || isHoliday;
-
-        const currentShift = state.shifts[dateStr] || {};
-        const d1 = state.doctors.find(d => d.id === currentShift.doctor1_id);
-        const d2 = state.doctors.find(d => d.id === currentShift.doctor2_id);
-        const d3 = state.doctors.find(d => d.id === currentShift.doctor3_id);
-        const d4 = state.doctors.find(d => d.id === currentShift.doctor4_id);
-
-        const dayName = ['Nd', 'Pn', 'Wt', 'Śr', 'Cz', 'Pt', 'Sb'][dayOfWeek];
-        const dayText = isHoliday ? `${day} (${dayName} - Św.)` : `${day} (${dayName})`;
-
-        const tr = document.createElement("tr");
-        if (isDayOff) tr.className = "pdf-holiday-row";
-
-        tr.innerHTML = `
-          <td style="text-align: center; font-weight: ${isDayOff ? 'bold' : 'normal'};">${dayText}</td>
-          <td style="font-weight: bold;">${d1 ? d1.name : "—"}</td>
-          <td>${d2 ? d2.name : "—"}</td>
-          <td>${d3 ? d3.name : "—"}</td>
-          <td>${d4 ? d4.name : "—"}</td>
-        `;
-        pdfTableBody.appendChild(tr);
-      }
-
-      const element = document.getElementById('pdf-render-area');
-      const opt = {
-        margin: [6, 8, 6, 8],
-        filename: `Grafik_OIT_${months[month]}_${year}.pdf`,
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-      };
-
-      showToast("Generowanie pliku PDF...");
-      html2pdf().set(opt).from(element).save().then(() => {
-        showToast("Pobrano plik PDF!");
-      });
-    }
-  </script>
-</body>
-</html>
+      optGroupOthers += `</
